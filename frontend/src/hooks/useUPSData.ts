@@ -62,8 +62,11 @@ export interface UPSEvent {
   value?: string;
 }
 
-const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:3001`;
-const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:3001`;
+// Derive the WebSocket and API URLs from the current page's protocol/host
+// so it works with both HTTP (dev) and HTTPS (prod behind Nginx proxy).
+const wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+const WS_URL = import.meta.env.VITE_WS_URL || `${wsProto}://${window.location.host}/ws`;
+const API_URL = import.meta.env.VITE_API_URL || '';  // relative — proxied by Nginx
 
 export function useUPSData() {
   const [data, setData] = useState<UPSData | null>(null);
