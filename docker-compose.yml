@@ -1,11 +1,12 @@
 version: '3.8'
 
 services:
-  backend:
+  apcups:
     build:
-      context: ./backend
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "80:80"
     environment:
       - UPS_IP=10.0.0.2
       - UPS_PORT=3551
@@ -13,15 +14,6 @@ services:
       - DATA_DIR=/app/data
     volumes:
       - ups-data:/app/data
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
     restart: unless-stopped
 
 volumes:

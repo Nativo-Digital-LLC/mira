@@ -1,0 +1,25 @@
+# Git
+.git
+.gitignore
+
+# CI
+.github
+
+# Node modules (installed fresh in each build stage)
+**/node_modules
+
+# Local dev / env files
+**/.env
+**/.env.*
+
+# TypeScript source maps and other junk
+**/*.map
+
+# Editor / OS
+.DS_Store
+**/.DS_Store
+.vscode
+.idea
+
+# Artifacts directory
+*.md

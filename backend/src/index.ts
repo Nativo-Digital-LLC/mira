@@ -4,6 +4,8 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import ApcAccess from 'apcaccess';
+import 'dotenv/config';
+
 import {
   saveHistory, getAllHistory,
   saveEvent, getEvents, getLastEventOfType,
