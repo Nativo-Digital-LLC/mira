@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+}
+
+@layer utilities {
+  .mono-nums { 
+    font-variant-numeric: tabular-nums; 
+  }
+  .glow-primary { 
+    filter: drop-shadow(0 0 8px rgba(119, 221, 109, 0.4)); 
+  }
+}
+
+.custom-table .ant-table {
+  background: transparent !important;
+  color: var(--on-surface-variant);
+}
+.custom-table .ant-table-thead > tr > th {
+  background: transparent !important;
+  color: #64748b !important;
+  border-bottom: 1px solid rgba(63, 74, 59, 0.1) !important;
+}
+.custom-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid rgba(63, 74, 59, 0.05) !important;
+}
+.custom-table .ant-table-tbody > tr:hover > td {
+  background: #282a2c !important;
+}
+.custom-table .ant-empty-description {
+  color: #64748b;
+}
