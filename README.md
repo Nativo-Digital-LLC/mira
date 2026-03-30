@@ -5,6 +5,12 @@
 
 Un panel de control web moderno, en tiempo real y autoalojado para monitorear tu unidad UPS APC (vía `apcupsd`) y administrar el apagado automatizado de ordenadores o nodos en caso de cortes de energía prolongados.
 
+<div align="center">
+  <img src="docs/assets/dashboard.png" alt="Vista del Dashboard Principal" width="800"/>
+  <br/>
+  <br/>
+</div>
+
 ## 🚀 Características
 
 * **📊 Monitoreo en Tiempo Real**: Visualiza el estado actual (Batería, Carga, Voltaje de entrada, Tiempo Restante) a través de WebSockets veloces.
@@ -13,6 +19,13 @@ Un panel de control web moderno, en tiempo real y autoalojado para monitorear tu
 * **🔔 Alertas Inteligentes**: Notificaciones *Push* integradas en navegador y notificaciones por **Email** a través de Resend.
 * **📈 Historial y Gráficos**: Base de datos liviana incrustada (SQLite) que almacena tu historial de 24hs para visualizar tendencias.
 * **🐳 Dockerizado**: Instálalo en segundos utilizando el contenedor ligero provisto en Docker Hub.
+
+### Galería de la Interfaz
+
+<div align="center">
+  <img src="docs/assets/history.png" alt="Gráficas e Historial" width="48%"/> &nbsp;
+  <img src="docs/assets/settings.png" alt="Opciones de Configuración" width="48%"/>
+</div>
 
 ---
 
