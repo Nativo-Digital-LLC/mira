@@ -8,10 +8,13 @@ services:
     ports:
       - "80:80"
     environment:
-      - UPS_IP=10.0.0.2
-      - UPS_PORT=3551
-      - POLL_INTERVAL_MS=2000
+      # Modifica estos valores acorde a tu propia configuración de red:
+      - UPS_IP=${UPS_IP:-192.168.1.10}
+      - UPS_PORT=${UPS_PORT:-3551}
+      - POLL_INTERVAL_MS=${POLL_INTERVAL_MS:-2000}
       - DATA_DIR=/app/data
+      # Si utilizas SMTP transaccional en lugar de Resend, especifícalo aquí.
+      # - JWT_SECRET=tu-secreto-aleatorio (Opcional: el sistema genera uno e inserta en db.sqlite por defecto)
     volumes:
       - ups-data:/app/data
     restart: unless-stopped

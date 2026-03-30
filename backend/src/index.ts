@@ -19,6 +19,7 @@ import { ApcUpsStatusProps } from './types';
 import { notify, vapidPublicKey, sendTestAlert, ALERT_TYPES } from './notifications';
 import { onStatus as automationOnStatus } from './automation';
 import { testConnection } from './ssh';
+import { authRouter, authenticateToken, verifyTokenSync } from './auth';
 
 const app = express();
 app.use(cors());
@@ -182,8 +183,18 @@ function broadcastJson(payload: object) {
   });
 }
 
-wss.on('connection', (ws) => {
-  console.log('New WebSocket client connected');
+wss.on('connection', (ws, req) => {
+  try {
+    const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+    const token = url.searchParams.get('token');
+    if (!token) throw new Error('No token provided');
+    verifyTokenSync(token);
+  } catch (err) {
+    ws.close(4001, 'Unauthorized');
+    return;
+  }
+
+  console.log('New WebSocket client connected (Authenticated)');
 
   if (latestStatus) {
     ws.send(JSON.stringify({ type: 'status', data: latestStatus }));
@@ -195,6 +206,9 @@ wss.on('connection', (ws) => {
 });
 
 // ── Core REST Endpoints ───────────────────────────────────────────────────────
+
+app.use('/api/auth', authRouter);
+app.use('/api', authenticateToken);
 
 app.get('/api/status', (_req, res) => {
   if (!latestStatus) {

@@ -1,7 +1,8 @@
-
 import { NavLink } from 'react-router-dom';
 import type { UPSData } from '../hooks/useUPSData';
 import type { UPSEvent } from '../hooks/useUPSData';
+import { useAuth } from '../contexts/AuthContext';
+import { LogoutOutlined } from '@ant-design/icons';
 
 interface Props {
   data: UPSData | null;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function Sidebar({ data, events = [] }: Props) {
+  const { logout } = useAuth();
   const isOnline = data?.STATUS?.includes('ONLINE');
   const criticalCount = events.filter(e => e.severity === 'critical').length;
 
@@ -62,7 +64,14 @@ export function Sidebar({ data, events = [] }: Props) {
             <span className="font-medium text-sm">Configuración</span>
           </NavLink>
         </nav>
-        <div className="px-6 mt-auto mb-4">
+        <div className="px-6 mt-auto mb-4 space-y-4">
+          <button
+            onClick={logout}
+            className="flex items-center gap-3 px-4 py-2 w-full text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors rounded-lg font-['Inter'] text-sm font-medium border border-red-500/20"
+          >
+            <LogoutOutlined />
+            <span>Cerrar Sesión</span>
+          </button>
           <div className="p-3 rounded bg-surface-container-lowest border border-outline-variant/10 text-center">
             <span className="text-[10px] text-slate-500 uppercase font-bold">Controlador:</span>
             <p className="text-xs text-on-surface truncate">{data?.DRIVER || 'N/A'}</p>

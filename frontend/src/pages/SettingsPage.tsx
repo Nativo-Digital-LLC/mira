@@ -49,18 +49,23 @@ const ALERT_LABELS: Record<string, string> = {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
+function getAuthHeader(): Record<string, string> {
+  const token = localStorage.getItem('ups_token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
 async function apiGet(path: string) {
-  const r = await fetch(path);
+  const r = await fetch(path, { headers: getAuthHeader() });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function apiPost(path: string, body: unknown) {
-  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeader() }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
 async function apiDelete(path: string) {
-  const r = await fetch(path, { method: 'DELETE' });
+  const r = await fetch(path, { method: 'DELETE', headers: getAuthHeader() });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }

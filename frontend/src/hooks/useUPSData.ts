@@ -68,7 +68,7 @@ const wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws';
 const WS_URL = import.meta.env.VITE_WS_URL || `${wsProto}://${window.location.host}/ws`;
 const API_URL = import.meta.env.VITE_API_URL || '';  // relative — proxied by Nginx
 
-export function useUPSData() {
+export function useUPSData(token: string | null) {
   const [data, setData] = useState<UPSData | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(false);
@@ -81,7 +81,9 @@ export function useUPSData() {
     let reconnectTimeout: ReturnType<typeof setTimeout>;
 
     const connect = () => {
-      ws = new WebSocket(WS_URL);
+      if (!token) return;
+      const wsUrlWithToken = `${WS_URL}?token=${token}`;
+      ws = new WebSocket(wsUrlWithToken);
 
       ws.onopen = () => {
         setConnected(true);
@@ -131,11 +133,11 @@ export function useUPSData() {
 
     // Fallback REST fetch if history not bootstrapped after 5s
     const historyFallbackTimeout = setTimeout(async () => {
-      if (!historyBootstrapped.current) {
+      if (!historyBootstrapped.current && token) {
         try {
           const [histRes, evtRes] = await Promise.all([
-            fetch(`${API_URL}/api/history`),
-            fetch(`${API_URL}/api/events`),
+            fetch(`${API_URL}/api/history`, { headers: { Authorization: `Bearer ${token}` } }),
+            fetch(`${API_URL}/api/events`, { headers: { Authorization: `Bearer ${token}` } }),
           ]);
           if (histRes.ok) setHistory(await histRes.json());
           if (evtRes.ok) setEvents(await evtRes.json());
@@ -153,7 +155,7 @@ export function useUPSData() {
       clearTimeout(reconnectTimeout);
       clearTimeout(historyFallbackTimeout);
     };
-  }, []);
+  }, [token]);
 
   const parseValue = (val?: string) => val ? parseFloat(val) : 0;
 

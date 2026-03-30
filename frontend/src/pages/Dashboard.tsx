@@ -1,6 +1,5 @@
 import { HeroHeader } from '../components/HeroHeader';
 import { DashboardMetrics } from '../components/DashboardMetrics';
-import { SystemDetails } from '../components/SystemDetails';
 import { SparklineCard } from '../components/SparklineCard';
 import type { UPSData, HistoryEntry } from '../hooks/useUPSData';
 
@@ -72,8 +71,6 @@ export function Dashboard({ data, parsed, connected, history }: Props) {
           />
         </div>
       </div>
-
-      <SystemDetails data={data} />
     </>
   );
 }

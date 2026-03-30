@@ -82,21 +82,28 @@ function severityEmoji(sev: EventSeverity) {
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 
-async function sendEmail(subject: string, html: string) {
+export async function sendEmail(subject: string, html: string, customTo?: string | string[]) {
   const apiKey = getSetting('resend_api_key');
   if (!apiKey) return;
 
   const from  = getSetting('resend_from', 'APC UPS <noreply@example.com>');
-  const toRaw = getSetting('resend_to', '');
-  const to    = toRaw.split(',').map(e => e.trim()).filter(Boolean);
-  if (!to.length) return;
+  let to: string[] = [];
+  if (customTo) {
+    to = Array.isArray(customTo) ? customTo : [customTo];
+  } else {
+    const toRaw = getSetting('resend_to', '');
+    to = toRaw.split(',').map(e => e.trim()).filter(Boolean);
+  }
+  if (!to.length) return false;
 
   const resend = new Resend(apiKey);
   try {
     await resend.emails.send({ from, to, subject, html });
     console.log(`[Email] Sent: ${subject}`);
+    return true;
   } catch (err) {
     console.error('[Email] Failed:', err);
+    return false;
   }
 }
 

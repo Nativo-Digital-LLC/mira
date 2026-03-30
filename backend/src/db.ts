@@ -47,6 +47,14 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS users (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    email               TEXT    NOT NULL UNIQUE,
+    password_hash       TEXT    NOT NULL,
+    reset_token         TEXT,
+    reset_token_expires INTEGER
+  );
+
   CREATE TABLE IF NOT EXISTS nodes (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     name         TEXT    NOT NULL,
@@ -244,4 +252,48 @@ export function deleteNode(id: number): void {
   db.prepare('DELETE FROM nodes WHERE id = ?').run(id);
 }
 
+// ── Users (Auth) ───────────────────────────────────────────────────────────────
+
+export interface User {
+  id: number;
+  email: string;
+  password_hash: string;
+  reset_token: string | null;
+  reset_token_expires: number | null;
+}
+
+export function hasAdminUser(): boolean {
+  const row = db.prepare<[], { count: number }>('SELECT COUNT(*) as count FROM users').get();
+  return (row?.count || 0) > 0;
+}
+
+export function createUser(email: string, passwordHash: string): User {
+  const info = db.prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)').run(email, passwordHash);
+  return getUserById(Number(info.lastInsertRowid))!;
+}
+
+export function getUserByEmail(email: string): User | undefined {
+  return db.prepare<[string], User>('SELECT * FROM users WHERE email = ?').get(email);
+}
+
+export function getUserById(id: number): User | undefined {
+  return db.prepare<[number], User>('SELECT * FROM users WHERE id = ?').get(id);
+}
+
+export function getUserByResetToken(token: string): User | undefined {
+  const now = Date.now();
+  return db.prepare<[string, number], User>(
+    'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?'
+  ).get(token, now);
+}
+
+export function updateUserPassword(id: number, passwordHash: string): void {
+  db.prepare('UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?').run(passwordHash, id);
+}
+
+export function setUserResetToken(id: number, token: string, expires: number): void {
+  db.prepare('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?').run(token, expires, id);
+}
+
 export default db;
+
