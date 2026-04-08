@@ -1,4 +1,4 @@
-import { getSetting, getNodes, saveEvent } from './db';
+import { getSetting, getNodes, saveEvent, getAutomations, type Automation } from './db';
 import type { SwarmNode, EventSeverity } from './db';
 import { execCommand } from './ssh';
 import type { ApcUpsStatusProps } from './types';
@@ -6,8 +6,8 @@ import type { ApcUpsStatusProps } from './types';
 // ── State ─────────────────────────────────────────────────────────────────────
 
 let onBatterySince: number | null = null;
-let node3Timer: ReturnType<typeof setTimeout> | null = null;
-const shutdownDone = new Set<number>(); // node IDs already shut down this cycle
+const activeTimers = new Map<number, ReturnType<typeof setTimeout>>(); // automation_id -> timer
+const executedAutomations = new Set<number>(); // automation IDs executed this cycle
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -28,8 +28,6 @@ function logEvent(type: string, severity: EventSeverity, description: string, va
 }
 
 async function shutdownNode(node: SwarmNode, reason: string) {
-  if (!node.id || shutdownDone.has(node.id)) return;
-  shutdownDone.add(node.id!);
   logEvent(
     'NODE_SHUTDOWN',
     'warning',
@@ -63,19 +61,20 @@ export function onStatus(status: ApcUpsStatusProps) {
   const isOnBattery = (status.STATUS ?? '').includes('ONBATT');
   const isOnline    = (status.STATUS ?? '').includes('ONLINE');
   const bcharge     = parseNum(status.BCHARGE);
-
-  const delay3min = parseInt(getSetting('node3_delay_minutes', '5'), 10) * 60_000;
-  const node2pct  = parseInt(getSetting('node2_battery_pct',   '60'), 10);
-  const node1pct  = parseInt(getSetting('node1_battery_pct',   '20'), 10);
-  const upsNodeId = parseInt(getSetting('ups_powerout_node_id', '0'),  10);
+  const timeleft    = parseNum(status.TIMELEFT); // minutes remaining
 
   const nodes = getNodes().filter(n => n.enabled);
+  const automations = getAutomations().filter(a => a.enabled);
 
   // ── Power restored ────────────────────────────────────────────────────────
   if (isOnline && onBatterySince !== null) {
     onBatterySince = null;
-    if (node3Timer) { clearTimeout(node3Timer); node3Timer = null; }
-    shutdownDone.clear();
+    // Clear all active timers
+    for (const timer of activeTimers.values()) {
+      clearTimeout(timer);
+    }
+    activeTimers.clear();
+    executedAutomations.clear();
     return;
   }
 
@@ -86,36 +85,92 @@ export function onStatus(status: ApcUpsStatusProps) {
     onBatterySince = Date.now();
   }
 
-  // Node 3 (highest order): shut down after delay
-  const node3 = nodes.find(n => n.node_order === 3);
-  if (node3 && !shutdownDone.has(node3.id!) && !node3Timer) {
-    const elapsed = Date.now() - onBatterySince;
-    const remaining = delay3min - elapsed;
-    if (remaining <= 0) {
-      shutdownNode(node3, `${getSetting('node3_delay_minutes', '5')} min en batería`);
-    } else {
-      node3Timer = setTimeout(() => {
-        node3Timer = null;
-        if (onBatterySince !== null) { // still on battery
-          shutdownNode(node3, `${getSetting('node3_delay_minutes', '5')} min en batería`);
+  const elapsedMinutes = (Date.now() - onBatterySince) / 60000; // Convert to minutes
+
+  // Process each automation
+  for (const automation of automations) {
+    if (executedAutomations.has(automation.id!)) continue;
+
+    let shouldExecute = false;
+    let reason = '';
+
+    switch (automation.trigger_type) {
+      case 'time_since_outage':
+        if (elapsedMinutes >= automation.trigger_value) {
+          shouldExecute = true;
+          reason = `${automation.trigger_value} minutos desde el corte de energía`;
+        } else if (!activeTimers.has(automation.id!)) {
+          // Set a timer for future execution
+          const remainingMs = (automation.trigger_value - elapsedMinutes) * 60000;
+          const timer = setTimeout(() => {
+            activeTimers.delete(automation.id!);
+            if (onBatterySince !== null) { // still on battery
+              executeAutomation(automation, nodes, reason);
+            }
+          }, remainingMs);
+          activeTimers.set(automation.id!, timer);
         }
-      }, remaining);
+        break;
+
+      case 'battery_percentage':
+        if (bcharge <= automation.trigger_value && bcharge > 0) {
+          shouldExecute = true;
+          reason = `Batería al ${bcharge.toFixed(1)}% (umbral ${automation.trigger_value}%)`;
+        }
+        break;
+
+      case 'battery_time_remaining':
+        if (timeleft <= automation.trigger_value && timeleft > 0) {
+          shouldExecute = true;
+          reason = `Tiempo restante de batería: ${timeleft.toFixed(1)} min (umbral ${automation.trigger_value} min)`;
+        }
+        break;
+    }
+
+    if (shouldExecute) {
+      executeAutomation(automation, nodes, reason);
+    }
+  }
+}
+
+function executeAutomation(automation: Automation, nodes: SwarmNode[], reason: string) {
+  executedAutomations.add(automation.id!);
+
+  // Clear any pending timer for this automation
+  const timer = activeTimers.get(automation.id!);
+  if (timer) {
+    clearTimeout(timer);
+    activeTimers.delete(automation.id!);
+  }
+
+  // Find the target node (if specified)
+  let targetNode: SwarmNode | undefined;
+  if (automation.node_id) {
+    targetNode = nodes.find(n => n.id === automation.node_id);
+    if (!targetNode || !targetNode.enabled) {
+      logEvent('AUTOMATION_SKIPPED', 'warning', `Automatización ${automation.id} omitida: nodo ${automation.node_id} no encontrado o deshabilitado`);
+      return;
     }
   }
 
-  // Node 2: shut down at battery threshold
-  const node2 = nodes.find(n => n.node_order === 2);
-  if (node2 && !shutdownDone.has(node2.id!) && bcharge <= node2pct && bcharge > 0) {
-    shutdownNode(node2, `Batería al ${bcharge.toFixed(1)}% (umbral ${node2pct}%)`);
-  }
-
-  // Node 1 (last): shut down + UPS command
-  const node1 = nodes.find(n => n.node_order === 1);
-  if (node1 && !shutdownDone.has(node1.id!) && bcharge <= node1pct && bcharge > 0) {
-    // Send UPS shutdown command first (so UPS powers off after node1 is down)
-    const upsNode = upsNodeId ? nodes.find(n => n.id === upsNodeId) : node1;
-    if (upsNode) sendUpsShutdown(upsNode);
-    // Brief delay then shut down node1
-    setTimeout(() => shutdownNode(node1, `Batería al ${bcharge.toFixed(1)}% (umbral ${node1pct}%)`), 5_000);
+  // Execute the command
+  if (targetNode) {
+    execCommand(targetNode, automation.command)
+      .then(() => {
+        logEvent('AUTOMATION_EXECUTED', 'info', `Automatización ejecutada en ${targetNode!.name}: ${automation.command}`, reason);
+      })
+      .catch((err: any) => {
+        logEvent('AUTOMATION_FAILED', 'warning', `Error ejecutando automatización en ${targetNode!.name}: ${err.message}`, automation.command);
+      });
+  } else {
+    // Execute locally or system command (assuming it's a system command when no node specified)
+    const { exec } = require('child_process');
+    exec(automation.command, (error: any, stdout: any, stderr: any) => {
+      if (error) {
+        logEvent('AUTOMATION_FAILED', 'warning', `Error ejecutando comando del sistema: ${error.message}`, automation.command);
+        return;
+      }
+      logEvent('AUTOMATION_EXECUTED', 'info', `Comando del sistema ejecutado: ${automation.command}`, reason);
+    });
   }
 }
