@@ -78,6 +78,11 @@ authRouter.post('/login', async (req, res) => {
   res.json({ token, user: { id: user.id, email: user.email } });
 });
 
+// Get current user (validate session)
+authRouter.get('/me', authenticateToken, (req, res) => {
+  res.json((req as any).user);
+});
+
 // Forgot Password
 authRouter.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
