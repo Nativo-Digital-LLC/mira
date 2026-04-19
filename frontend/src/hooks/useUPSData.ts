@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { apiFetch } from '../lib/api';
 
 export interface UPSData {
   STATUS?: string;
@@ -136,8 +137,8 @@ export function useUPSData(token: string | null) {
       if (!historyBootstrapped.current && token) {
         try {
           const [histRes, evtRes] = await Promise.all([
-            fetch(`${API_URL}/api/history`, { headers: { Authorization: `Bearer ${token}` } }),
-            fetch(`${API_URL}/api/events`, { headers: { Authorization: `Bearer ${token}` } }),
+            apiFetch(`${API_URL}/api/history`),
+            apiFetch(`${API_URL}/api/events`),
           ]);
           if (histRes.ok) setHistory(await histRes.json());
           if (evtRes.ok) setEvents(await evtRes.json());

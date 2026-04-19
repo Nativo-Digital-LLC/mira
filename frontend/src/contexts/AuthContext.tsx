@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import type { ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { API_EVENT_UNAUTHORIZED, apiGet } from '../lib/api';
 
 interface User {
   id: number;
@@ -41,6 +41,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     checkSetupStatus();
+
+    // Listen for unauthorized events to logout automatically
+    const handleUnauthorized = () => logout();
+    window.addEventListener(API_EVENT_UNAUTHORIZED, handleUnauthorized);
+
+    // Validate token on mount
+    if (token) {
+      apiGet('/api/auth/me').catch(() => {
+        logout();
+      });
+    }
+
+    return () => {
+      window.removeEventListener(API_EVENT_UNAUTHORIZED, handleUnauthorized);
+    };
   }, []);
 
   const login = (newToken: string, newUser: User) => {

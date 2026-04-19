@@ -7,7 +7,10 @@ import {
   MailOutlined, BellOutlined, ApiOutlined, PlusOutlined,
   DeleteOutlined, CheckCircleOutlined,
   SendOutlined, PoweroffOutlined, QuestionCircleOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons';
+import { useAuth } from '../contexts/AuthContext';
+import { apiGet, apiPost, apiDelete } from '../lib/api';
 
 const { TabPane } = Tabs;
 const { TextArea } = Input;
@@ -57,28 +60,6 @@ const ALERT_LABELS: Record<string, string> = {
   POWER_TRANSFER: 'Transferencia de energía',
 };
 
-// ── API helpers ───────────────────────────────────────────────────────────────
-
-function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem('ups_token');
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
-}
-
-async function apiGet(path: string) {
-  const r = await fetch(path, { headers: getAuthHeader() });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function apiPost(path: string, body: unknown) {
-  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeader() }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-async function apiDelete(path: string) {
-  const r = await fetch(path, { method: 'DELETE', headers: getAuthHeader() });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
 
 // ── Push helpers ──────────────────────────────────────────────────────────────
 
@@ -108,6 +89,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
+  const { logout, user } = useAuth();
   const [settings, setSettings] = useState<Settings>({});
   const [nodes, setNodes] = useState<SwarmNode[]>([]);
   const [automations, setAutomations] = useState<Automation[]>([]);
@@ -554,6 +536,23 @@ export function SettingsPage() {
             </div>
           </TabPane>
         </Tabs>
+      </div>
+
+      <div className="bg-surface rounded-xl border border-white/10 p-6">
+        <h3 className="text-white font-semibold text-lg mb-2 flex items-center gap-2">
+          <LogoutOutlined className="text-red-400" /> Sesión
+        </h3>
+        <p className="text-gray-400 mb-4 text-sm">
+          Has iniciado sesión como <span className="text-white font-medium">{user?.email}</span>
+        </p>
+        <Button 
+          danger 
+          icon={<LogoutOutlined />} 
+          onClick={logout}
+          className="w-full md:w-auto"
+        >
+          Cerrar Sesión
+        </Button>
       </div>
 
       {/* Node Modal */}

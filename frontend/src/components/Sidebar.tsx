@@ -106,6 +106,9 @@ export function Sidebar({ data, events = [] }: Props) {
         <NavLink to="/settings" className={mobileNavLinkClass}>
           <span className="material-symbols-outlined" data-icon="settings">settings</span>
         </NavLink>
+        <button onClick={logout} className="flex flex-col items-center gap-1 text-red-400">
+          <span className="material-symbols-outlined" data-icon="logout">logout</span>
+        </button>
       </nav>
     </>
   );
